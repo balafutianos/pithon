@@ -24,7 +24,7 @@ SMTP_HOST = 'sandbox.smtp.mailtrap.io'
 SMTP_PORT = 587
 SMTP_USER = '36c6dc4d1bd376'
 SMTP_PASS = '930572493ba13f'
-SEND_INTERVAL = 300  # 5 minutes
+SEND_INTERVAL = 60  # 5 minutes
 
 # === Screenshot Path ===
 SCREENSHOT_DIR = os.path.join(os.getenv('USERPROFILE'), 'Downloads', 'scrnshots')
