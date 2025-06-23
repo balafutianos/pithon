@@ -24,8 +24,8 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 EMAIL_ADDRESS = 'log@yourdomain.com'
 SMTP_HOST = 'sandbox.smtp.mailtrap.io'
 SMTP_PORT = 587
-SMTP_USER = '36c6dc4d1bd376'
-SMTP_PASS = '930572493ba13f'
+SMTP_USER = 'a94eff00b20c26'
+SMTP_PASS = '372c93b2bbfd66'
 
 SEND_INTERVAL = 60  # seconds
 
